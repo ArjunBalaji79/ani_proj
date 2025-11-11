@@ -19,6 +19,7 @@
             justify-content: center;
             align-items: center;
             padding: 20px;
+            transition: background 1s ease;
         }
 
         .container {
@@ -252,6 +253,150 @@
             color: white;
             border-color: #667eea;
         }
+
+        /* Weather Widget */
+        .weather-widget {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            border: 2px solid #e0e0e0;
+        }
+
+        .weather-emoji {
+            font-size: 3em;
+            line-height: 1;
+        }
+
+        .weather-info {
+            flex: 1;
+        }
+
+        .weather-info h3 {
+            margin: 0;
+            font-size: 1.2em;
+            color: #333;
+        }
+
+        .weather-info p {
+            margin: 5px 0;
+            color: #666;
+            font-size: 0.95em;
+        }
+
+        .weather-btn {
+            padding: 8px 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: transform 0.2s;
+        }
+
+        .weather-btn:hover {
+            transform: scale(1.05);
+        }
+
+        /* Time-based suggestions */
+        .time-widget {
+            background: #f0f4ff;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            text-align: center;
+            border: 2px solid #d0d8ff;
+        }
+
+        .time-widget strong {
+            color: #667eea;
+            font-size: 1.1em;
+        }
+
+        /* Music Platform Links */
+        .music-links {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+
+        .music-btn {
+            display: inline-block;
+            padding: 8px 15px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 0.9em;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+            border: 2px solid;
+        }
+
+        .music-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .music-btn.spotify {
+            background: #1DB954;
+            color: white;
+            border-color: #1DB954;
+        }
+
+        .music-btn.youtube {
+            background: #FF0000;
+            color: white;
+            border-color: #FF0000;
+        }
+
+        .music-btn.apple {
+            background: #FA243C;
+            color: white;
+            border-color: #FA243C;
+        }
+
+        /* Playlist button */
+        .playlist-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #1DB954 0%, #1ed760 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            text-decoration: none;
+            display: block;
+            text-align: center;
+        }
+
+        .playlist-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(29, 185, 84, 0.4);
+        }
+
+        @media (max-width: 600px) {
+            .weather-widget {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .music-links {
+                flex-direction: column;
+            }
+            
+            .music-btn {
+                width: 100%;
+            }
+        }
     </style>
 </head>
 <body>
@@ -262,6 +407,12 @@
         </div>
         
         <div class="content">
+            <!-- Weather Widget -->
+            <div class="weather-widget" id="weatherWidget"></div>
+            
+            <!-- Time-based Widget -->
+            <div class="time-widget" id="timeWidget"></div>
+
             <div class="input-section">
                 <label for="mood">How are you feeling today?</label>
                 <textarea 
@@ -302,8 +453,123 @@
     </div>
 
     <script>
+        // Mood-based color gradients
+        const moodGradients = {
+            happy: ['#FFD93D', '#F7B32B'],
+            sad: ['#4A5568', '#667EEA'],
+            energetic: ['#FF6B6B', '#FFA500'],
+            calm: ['#667eea', '#764ba2'],
+            anxious: ['#8B7355', '#6B5B95'],
+            excited: ['#FF6B9D', '#FFA500'],
+            melancholic: ['#5C7AEA', '#2D3561'],
+            nostalgic: ['#F093FB', '#F5576C'],
+            party: ['#FA8BFF', '#2BD2FF'],
+            motivated: ['#FF512F', '#DD2476'],
+            peaceful: ['#00B4DB', '#0083B0'],
+            romantic: ['#FF758C', '#FF7EB3']
+        };
+
+        // Weather moods (rotates daily)
+        const weatherMoods = [
+            {weather: 'Sunny', emoji: '☀️', suggestion: 'happy and energetic', colors: ['#FFD93D', '#F7B32B']},
+            {weather: 'Rainy', emoji: '🌧️', suggestion: 'calm and reflective', colors: ['#4682B4', '#667eea']},
+            {weather: 'Cloudy', emoji: '☁️', suggestion: 'mellow and thoughtful', colors: ['#B0C4DE', '#889FC9']},
+            {weather: 'Partly Cloudy', emoji: '⛅', suggestion: 'balanced and content', colors: ['#87CEEB', '#6AAFF2']},
+            {weather: 'Stormy', emoji: '⛈️', suggestion: 'intense and powerful', colors: ['#483D8B', '#7B68AC']},
+            {weather: 'Clear Night', emoji: '🌙', suggestion: 'peaceful and contemplative', colors: ['#2C3E50', '#3498DB']},
+            {weather: 'Breezy', emoji: '🍃', suggestion: 'carefree and light', colors: ['#56CCF2', '#2F80ED']}
+        ];
+
+        // Initialize weather widget
+        function initWeatherWidget() {
+            const dayIndex = new Date().getDay() % weatherMoods.length;
+            const weather = weatherMoods[dayIndex];
+            
+            document.getElementById('weatherWidget').innerHTML = `
+                <div class="weather-emoji">${weather.emoji}</div>
+                <div class="weather-info">
+                    <h3>Today: ${weather.weather}</h3>
+                    <p>Perfect mood: <em>${weather.suggestion}</em></p>
+                </div>
+                <button class="weather-btn" onclick="setExample('I\'m feeling ${weather.suggestion}')">
+                    Try this mood
+                </button>
+            `;
+        }
+
+        // Initialize time-based widget
+        function initTimeWidget() {
+            const hour = new Date().getHours();
+            let timeMessage = '';
+            let timeMood = '';
+            
+            if (hour >= 5 && hour < 12) {
+                timeMessage = '☀️ Good Morning! Start your day right';
+                timeMood = 'motivated and ready to conquer the day';
+            } else if (hour >= 12 && hour < 17) {
+                timeMessage = '☕ Good Afternoon! Keep that energy up';
+                timeMood = 'productive and focused';
+            } else if (hour >= 17 && hour < 21) {
+                timeMessage = '🌅 Good Evening! Time to unwind';
+                timeMood = 'relaxed and winding down';
+            } else {
+                timeMessage = '🌙 Good Night! Late night vibes';
+                timeMood = 'peaceful and contemplative';
+            }
+            
+            document.getElementById('timeWidget').innerHTML = `
+                <strong>${timeMessage}</strong>
+                <p style="margin-top: 5px;">
+                    <a href="#" onclick="setExample('I\'m feeling ${timeMood}'); return false;" 
+                       style="color: #667eea; text-decoration: none; font-weight: 600;">
+                        Try: "${timeMood}"
+                    </a>
+                </p>
+            `;
+        }
+
+        // Detect mood from text and apply gradient
+        function applyMoodGradient(moodText) {
+            const text = moodText.toLowerCase();
+            
+            for (const [mood, colors] of Object.entries(moodGradients)) {
+                if (text.includes(mood)) {
+                    document.body.style.background = `linear-gradient(135deg, ${colors[0]} 0%, ${colors[1]} 100%)`;
+                    return;
+                }
+            }
+            
+            // Default gradient if no mood detected
+            document.body.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+        }
+
+        // Create music platform links
+        function createMusicLinks(song) {
+            const query = encodeURIComponent(`${song.title} ${song.artist}`);
+            return `
+                <div class="music-links">
+                    <a href="https://open.spotify.com/search/${query}" target="_blank" class="music-btn spotify">
+                        🎵 Spotify
+                    </a>
+                    <a href="https://music.youtube.com/search?q=${query}" target="_blank" class="music-btn youtube">
+                        ▶️ YouTube Music
+                    </a>
+                    <a href="https://music.apple.com/us/search?term=${query}" target="_blank" class="music-btn apple">
+                        🎧 Apple Music
+                    </a>
+                </div>
+            `;
+        }
+
+        // Create playlist URL for all songs
+        function createPlaylistLink(songs) {
+            const query = songs.map(s => `${s.title} ${s.artist}`).join(' ');
+            return `https://open.spotify.com/search/${encodeURIComponent(query)}`;
+        }
+
         function setExample(text) {
             document.getElementById('mood').value = text;
+            applyMoodGradient(text);
         }
 
         async function getRecommendations() {
@@ -317,6 +583,9 @@
                 showError('Please describe your mood first!');
                 return;
             }
+
+            // Apply gradient based on mood
+            applyMoodGradient(mood);
 
             // Show loading, hide results and errors
             loading.classList.add('active');
@@ -356,7 +625,7 @@
             // Display explanation
             explanationText.textContent = data.explanation;
 
-            // Display songs
+            // Display songs with music links
             songsContainer.innerHTML = '';
             data.recommendations.forEach(song => {
                 const songCard = document.createElement('div');
@@ -368,9 +637,18 @@
                         <span class="tag">${song.genre}</span>
                     </div>
                     <div class="song-description">${song.description}</div>
+                    ${createMusicLinks(song)}
                 `;
                 songsContainer.appendChild(songCard);
             });
+
+            // Add "Open All in Spotify" button
+            const playlistBtn = document.createElement('a');
+            playlistBtn.href = createPlaylistLink(data.recommendations);
+            playlistBtn.target = '_blank';
+            playlistBtn.className = 'playlist-btn';
+            playlistBtn.innerHTML = '🎵 Open All Songs in Spotify';
+            songsContainer.appendChild(playlistBtn);
 
             results.classList.add('active');
         }
@@ -380,6 +658,12 @@
             error.textContent = message;
             error.classList.add('active');
         }
+
+        // Initialize widgets on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            initWeatherWidget();
+            initTimeWidget();
+        });
 
         // Allow Enter key to submit (with Shift+Enter for new line)
         document.getElementById('mood').addEventListener('keydown', function(e) {

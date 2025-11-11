@@ -7,6 +7,10 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.schema import Document
 import requests
 import json
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 app = Flask(__name__, template_folder='../templates', static_folder='../static')
 CORS(app)
@@ -68,8 +72,11 @@ def query_cerebras(prompt, context):
     """Query Cerebras API for song recommendations"""
     api_key = os.environ.get('CEREBRAS_API_KEY', '')
     
-    if not api_key:
+    if not api_key or api_key == 'your_api_key_here':
         # Fallback response if no API key
+        print("⚠️  WARNING: No valid CEREBRAS_API_KEY found. Using fallback response.")
+        print("   To enable AI recommendations, get a key from: https://cloud.cerebras.ai/")
+        print("   Then add it to Vercel environment variables: CEREBRAS_API_KEY=your_key")
         return "Based on your mood, I'd recommend checking out the songs I found for you!"
     
     try:
@@ -101,14 +108,41 @@ Explain briefly why each song fits their current emotional state."""
             "max_tokens": 500
         }
         
+        print(f"🤖 Querying Cerebras API with model: llama3.1-8b")
         response = requests.post(url, headers=headers, json=data, timeout=10)
+        
+        # Check for HTTP errors
+        if response.status_code == 401:
+            print(f"❌ ERROR: Invalid API key (401 Unauthorized)")
+            print(f"   Please check your CEREBRAS_API_KEY is correct")
+            return "Unable to generate AI recommendations. Please check your API key configuration."
+        elif response.status_code == 429:
+            print(f"❌ ERROR: Rate limit exceeded (429)")
+            return "Too many requests. Please try again in a moment."
+        elif response.status_code >= 500:
+            print(f"❌ ERROR: Cerebras API server error ({response.status_code})")
+            return "AI service temporarily unavailable. Here are some great song recommendations!"
+        
         response.raise_for_status()
         
         result = response.json()
+        print(f"✅ Successfully received AI response from Cerebras")
         return result['choices'][0]['message']['content']
     
+    except requests.exceptions.Timeout:
+        print(f"❌ ERROR: Request timeout after 10 seconds")
+        return "Request took too long. Here are some great song recommendations from my collection!"
+    except requests.exceptions.ConnectionError as e:
+        print(f"❌ ERROR: Connection failed - {str(e)}")
+        return "Unable to connect to AI service. Here are some great song recommendations!"
+    except KeyError as e:
+        print(f"❌ ERROR: Unexpected API response format - missing key: {e}")
+        print(f"   Response: {response.text if 'response' in locals() else 'No response'}")
+        return "Received unexpected response from AI. Here are some great song recommendations!"
     except Exception as e:
-        print(f"Error querying Cerebras: {e}")
+        print(f"❌ ERROR: Unexpected error querying Cerebras: {type(e).__name__}: {e}")
+        import traceback
+        traceback.print_exc()
         return "Based on your mood, here are some great song recommendations from my collection!"
 
 @app.route('/')
@@ -124,8 +158,11 @@ def recommend():
         if not mood_input:
             return jsonify({'error': 'Please describe your mood'}), 400
         
+        print(f"\n📝 Processing mood: '{mood_input}'")
+        
         # Retrieve relevant songs using RAG
         relevant_docs = vectorstore.similarity_search(mood_input, k=5)
+        print(f"🔍 Found {len(relevant_docs)} relevant songs")
         
         # Prepare context for LLM
         context = "\n\n".join([
@@ -154,12 +191,21 @@ def recommend():
         })
     
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"❌ Error in recommend endpoint: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/health', methods=['GET'])
 def health():
-    return jsonify({'status': 'healthy'})
+    api_key = os.environ.get('CEREBRAS_API_KEY', '')
+    api_key_status = 'configured' if api_key and api_key != 'your_api_key_here' else 'not_configured'
+    
+    return jsonify({
+        'status': 'healthy',
+        'cerebras_api': api_key_status,
+        'message': 'AI recommendations enabled' if api_key_status == 'configured' else 'Using fallback responses (set CEREBRAS_API_KEY for AI recommendations)'
+    })
 
 # Vercel serverless function handler
 def handler(request):
