@@ -1,3 +1,6 @@
+# Minimal requirements for Vercel deployment
+# Use this if the main requirements.txt has issues
+
 Flask==3.0.0
 flask-cors==4.0.0
 langchain==0.1.20
@@ -5,4 +8,4 @@ langchain-community==0.0.38
 sentence-transformers==2.7.0
 faiss-cpu==1.8.0
 requests==2.31.0
-huggingface-hub==0.23.0
+
