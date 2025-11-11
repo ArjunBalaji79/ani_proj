@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MoodTunes - AI Song Recommendations</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            width: 100%;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .input-section {
+            margin-bottom: 30px;
+        }
+
+        .input-section label {
+            display: block;
+            font-size: 1.1em;
+            margin-bottom: 10px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        .input-section textarea {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1em;
+            resize: vertical;
+            min-height: 100px;
+            font-family: inherit;
+            transition: border-color 0.3s;
+        }
+
+        .input-section textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .button {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            display: none;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .results {
+            margin-top: 30px;
+            display: none;
+        }
+
+        .results.active {
+            display: block;
+        }
+
+        .explanation {
+            background: #f8f9ff;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border-left: 4px solid #667eea;
+        }
+
+        .explanation h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .explanation p {
+            color: #555;
+            line-height: 1.6;
+            white-space: pre-line;
+        }
+
+        .songs {
+            display: grid;
+            gap: 15px;
+        }
+
+        .song-card {
+            background: #f8f9ff;
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #e0e0e0;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .song-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            border-color: #667eea;
+        }
+
+        .song-title {
+            font-size: 1.3em;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .song-artist {
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .song-meta {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 10px;
+        }
+
+        .tag {
+            display: inline-block;
+            padding: 5px 10px;
+            background: #667eea;
+            color: white;
+            border-radius: 5px;
+            font-size: 0.9em;
+        }
+
+        .song-description {
+            color: #555;
+            line-height: 1.5;
+            margin-top: 10px;
+        }
+
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .error.active {
+            display: block;
+        }
+
+        .examples {
+            margin-top: 15px;
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 8px;
+        }
+
+        .examples p {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        .example-tag {
+            display: inline-block;
+            padding: 5px 10px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 0.85em;
+            margin: 3px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .example-tag:hover {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎵 MoodTunes</h1>
+            <p>AI-powered song recommendations based on your mood</p>
+        </div>
+        
+        <div class="content">
+            <div class="input-section">
+                <label for="mood">How are you feeling today?</label>
+                <textarea 
+                    id="mood" 
+                    placeholder="Describe your mood... (e.g., 'I'm feeling a bit down today' or 'Super happy and energetic!')"
+                ></textarea>
+                
+                <div class="examples">
+                    <p><strong>Try these:</strong></p>
+                    <span class="example-tag" onclick="setExample('I\'m feeling really happy and energetic today!')">😊 Happy & Energetic</span>
+                    <span class="example-tag" onclick="setExample('Feeling a bit sad and need some comfort')">😢 Sad & Need Comfort</span>
+                    <span class="example-tag" onclick="setExample('I\'m stressed out and anxious about work')">😰 Stressed & Anxious</span>
+                    <span class="example-tag" onclick="setExample('Feeling nostalgic and reflective')">🌅 Nostalgic</span>
+                    <span class="example-tag" onclick="setExample('Ready to party and have fun!')">🎉 Party Mode</span>
+                </div>
+            </div>
+
+            <button class="button" onclick="getRecommendations()">
+                Get Song Recommendations
+            </button>
+
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p style="margin-top: 10px; color: #666;">Finding perfect songs for you...</p>
+            </div>
+
+            <div class="error" id="error"></div>
+
+            <div class="results" id="results">
+                <div class="explanation" id="explanation">
+                    <h3>🎯 Personalized Recommendations</h3>
+                    <p id="explanationText"></p>
+                </div>
+
+                <div class="songs" id="songs"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function setExample(text) {
+            document.getElementById('mood').value = text;
+        }
+
+        async function getRecommendations() {
+            const mood = document.getElementById('mood').value.trim();
+            const loading = document.getElementById('loading');
+            const results = document.getElementById('results');
+            const error = document.getElementById('error');
+            const button = document.querySelector('.button');
+
+            if (!mood) {
+                showError('Please describe your mood first!');
+                return;
+            }
+
+            // Show loading, hide results and errors
+            loading.classList.add('active');
+            results.classList.remove('active');
+            error.classList.remove('active');
+            button.disabled = true;
+
+            try {
+                const response = await fetch('/api/recommend', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ mood: mood })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to get recommendations');
+                }
+
+                const data = await response.json();
+                displayResults(data);
+            } catch (err) {
+                showError('Oops! Something went wrong. Please try again.');
+                console.error(err);
+            } finally {
+                loading.classList.remove('active');
+                button.disabled = false;
+            }
+        }
+
+        function displayResults(data) {
+            const results = document.getElementById('results');
+            const explanationText = document.getElementById('explanationText');
+            const songsContainer = document.getElementById('songs');
+
+            // Display explanation
+            explanationText.textContent = data.explanation;
+
+            // Display songs
+            songsContainer.innerHTML = '';
+            data.recommendations.forEach(song => {
+                const songCard = document.createElement('div');
+                songCard.className = 'song-card';
+                songCard.innerHTML = `
+                    <div class="song-title">${song.title}</div>
+                    <div class="song-artist">by ${song.artist}</div>
+                    <div class="song-meta">
+                        <span class="tag">${song.genre}</span>
+                    </div>
+                    <div class="song-description">${song.description}</div>
+                `;
+                songsContainer.appendChild(songCard);
+            });
+
+            results.classList.add('active');
+        }
+
+        function showError(message) {
+            const error = document.getElementById('error');
+            error.textContent = message;
+            error.classList.add('active');
+        }
+
+        // Allow Enter key to submit (with Shift+Enter for new line)
+        document.getElementById('mood').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                getRecommendations();
+            }
+        });
+    </script>
+</body>
+</html>
